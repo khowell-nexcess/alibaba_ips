@@ -1,0 +1,45 @@
+#!/bin/bash
+
+# Pre-execution cleanup
+# Truncate the cron execution log
+> /var/log/alibabaIpCron.log
+
+# Initialize the cron execution log
+echo -e "#####\n# $(date) - Alibaba IP scan log\n#####\n" | tee /var/log/alibabaIpCron.log
+
+# Remove the alibabaFullIpList file if exists
+if [ -f /var/tmp/alibabaFullIpList ]; then
+  rm /var/tmp/alibabaFullIpList
+  echo "\# Cleaned up existing /var/tmp/alibabaFullIpList file." | tee /var/log/alibabaIpCron.log
+fi
+
+# Remove the alibabaIpGroups file if exists
+if [ -f /var/tmp/alibabaIpGroups ]; then
+  rm /var/tmp/alibabaIpGroups
+  echo "\# Cleaned up existing /var/tmp/alibabaIpGroups file." | tee /var/log/alibabaIpCron.log
+fi
+
+echo -e "# Scan started.\n" >> /var/log/alibabaIpCron.log
+echo -e "# Found log files;\n$(find /home/*/var/*/logs/transfer*.log)\n" | tee /var/log/alibabaIpCron.log
+
+# Generate a temp list of all identified alibaba IPs, assuming they start with "47"
+# TO-DO: 
+find /home/*/var/*/logs/transfer*.log |
+while read line; do
+  cat "$line" |
+  awk -F' \\[' '{print $1}' |
+  sed 's/ /\n/g;s/\-/\n/g' |
+  grep '.' |
+  awk -F'.' '{if($1=="47"){print $1"."$2"."$3"."$4};}'
+done |
+sort |
+uniq > /var/tmp/alibabaFullIpList
+
+alibabaIpsTotal="$(cat /var/tmp/alibabaFullIpList | wc -l)"
+
+echo -e "Scan complete, processed $alibabaIpsTotal IPs in total." | tee /var/log/alibabaIpCron.log
+
+cat /var/tmp/alibabaFullIpList |
+awk -F'.' '{print $1"."$2"."$3".0/24"}' |
+sort |
+uniq > /var/tmp/alibabaBlockIps
