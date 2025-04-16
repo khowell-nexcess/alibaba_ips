@@ -43,3 +43,15 @@ cat /var/tmp/alibabaFullIpList |
 awk -F'.' '{print $1"."$2"."$3".0/24"}' |
 sort |
 uniq > /var/tmp/alibabaBlockIps
+
+echo
+alibabaList=$(cat /var/tmp/alibabaBlockIps)
+echo "Select '1' for firewall restriction or '2' for .htaccess restriction: "
+select yn in "1" "2"; do
+  case $yn in
+    1 ) echo -e "\nIMPORTANT: Please be sure to copy the following lines, including the commented lines\n# BEGIN Alibaba Restriction\n# NOTE: The following block is intended to restrict abusive alibaba IPs" && echo -e "$alibabaList" | while read line; do echo -e "d=80:s=$line\nd=443:s=$line"; done; echo "# END Alibaba Restriction"; break;;
+    2 ) echo -e "\nIMPORTANT: Please be sure to copy the following lines, including the commented lines\n# BEGIN Alibaba Restriction\n# NOTE: The following block is intended to restrict abusive alibaba IPs" && echo -e "$alibabaList" | while read line; do echo -e "Deny from $line"; done; echo "# END Alibaba Restriction"; break;;
+  esac
+echo $yn
+done
+echo
